@@ -44,7 +44,7 @@ jobs:
       - name: Package Binary
         shell: bash
         run: |
-          binary_name="my_rust_web_app"
+          binary_name="mock-rs"
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             binary_name="$binary_name.exe"
           fi
