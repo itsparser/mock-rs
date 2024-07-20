@@ -4,11 +4,11 @@ use std::sync::{Arc, Mutex};
 
 use axum::{Extension, extract::Path, Json, Router, routing::get, routing::post};
 use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
+use axum::response::{IntoResponse};
 use chrono::{Duration, Utc};
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::net::TcpListener;
+
 use crate::cache::LRUCache;
 use crate::form::FormData;
 
@@ -49,7 +49,7 @@ async fn submit_item(
     Path(form_id): Path<String>,
     Extension(form_cache): Extension<FormCache>,
     Extension(form_data_cache): Extension<FormDataCache>,
-    Json(mut payload): Json<Value>,
+    Json(payload): Json<Value>,
 ) -> impl IntoResponse {
 
     let mut form_cache = form_cache.lock().unwrap();

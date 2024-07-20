@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::time::SystemTime;
-use crate::form::FormData;
 
 pub struct CacheEntry<T> {
     value: T,
