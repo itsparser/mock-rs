@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::env;
 use std::sync::{Arc, Mutex};
 
@@ -57,13 +58,21 @@ async fn submit_item(
             if form_data.expires_at.unwrap() < Utc::now() {
                 // Form data has expired
                 form_cache.remove(&form_id);
-                (StatusCode::NOT_FOUND, Json(json!({}))).into_response()
+                (StatusCode::NOT_FOUND, Json(json!({"message": "Invalid Form".to_string()}))).into_response()
             } else {
+                let Value::Object(map) = payload.clone() else { todo!() };
+                let json_keys_set: HashSet<&String> = map.keys().collect();
+                let required_keys_set: HashSet<&String> = form_data.fields.iter().map(|field| &field.name).collect();
+                let mut diff = json_keys_set.difference(&required_keys_set);
+                if diff.any(|_| return true) {
+                    let v : Vec<&String> = diff.into_iter().map(|item| *item).collect();
+                    return (StatusCode::BAD_REQUEST, Json(json!({"message": "Invalid Payload".to_string(), "invalid": v}))).into_response()
+                }
                 let mut form_data_cache = form_data_cache.lock().unwrap();
                 let current_timestamp = Utc::now();
-                let form_id = current_timestamp.timestamp_millis().to_string();
-                form_data_cache.set(form_id, payload);
-                (StatusCode::OK, "Item Created successfully".to_string()).into_response()
+                let data_id = current_timestamp.timestamp_millis().to_string();
+                form_data_cache.set(data_id.clone(), payload);
+                (StatusCode::OK, Json(json!({"message": "Item Created successfully".to_string(), "id": data_id}))).into_response()
             }
         }
         None => (StatusCode::NOT_FOUND, Json(json!({}))).into_response(),
@@ -74,7 +83,7 @@ async fn create_form(
     // Path(form_id): Path<String>,,
     Extension(form_cache): Extension<FormCache>,
     Json(mut payload): Json<FormData>,
-) -> (StatusCode, String) {
+) -> impl IntoResponse {
     let current_timestamp = Utc::now();
     let form_id = current_timestamp.timestamp_millis().to_string();
     if payload.id.is_none() {
@@ -85,8 +94,8 @@ async fn create_form(
     }
 
     let mut form_cache = form_cache.lock().unwrap();
-    form_cache.set(form_id, payload);
-    (StatusCode::OK, "Form Created successfully".to_string())
+    form_cache.set(form_id.clone(), payload);
+    (StatusCode::OK, Json(json!({"message": "Form Created successfully".to_string(), "id": form_id}))).into_response()
 }
 
 #[tokio::main]
@@ -100,7 +109,7 @@ async fn main() {
         .route("/", get(welcome))
         .route("/ping", get(ping))
         .route("/forms", post(create_form))
-        .route("/forms/:form_id/submit", post(get_fields))
+        .route("/forms/:form_id/submit", post(submit_item))
         .route("/forms/:form_id/fields", get(get_fields))
         .layer(Extension(form_cache)).layer(Extension(form_data));
 
