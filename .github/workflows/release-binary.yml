@@ -61,6 +61,8 @@ jobs:
     name: Create Release
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     if: github.event_name == 'release' && github.event.action == 'created'
 
     steps:
