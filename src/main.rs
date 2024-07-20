@@ -63,7 +63,7 @@ async fn submit_item(
                 let Value::Object(map) = payload.clone() else { todo!() };
                 let json_keys_set: HashSet<&String> = map.keys().collect();
                 let required_keys_set: HashSet<&String> = form_data.fields.iter().map(|field| &field.name).collect();
-                let mut diff = json_keys_set.difference(&required_keys_set);
+                let mut diff = json_keys_set.symmetric_difference(&required_keys_set);
                 if diff.any(|_| return true) {
                     let v : Vec<&String> = diff.into_iter().map(|item| *item).collect();
                     return (StatusCode::BAD_REQUEST, Json(json!({"message": "Invalid Payload".to_string(), "invalid": v}))).into_response()
