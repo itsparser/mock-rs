@@ -1,0 +1,78 @@
+name: Rust Cross-Platform Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [created]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        include:
+          - os: ubuntu-latest
+            artifact_name: linux-x86_64
+          - os: windows-latest
+            artifact_name: windows-x86_64
+          - os: macOS-latest
+            artifact_name: macos-x86_64
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Build
+        run: cargo build --release --verbose
+
+      - name: Run tests
+        run: cargo test --verbose
+
+      - name: Package Binary
+        shell: bash
+        run: |
+          binary_name="my_rust_web_app"
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            binary_name="$binary_name.exe"
+          fi
+          mv target/release/$binary_name .
+          tar -czf ${{ matrix.artifact_name }}.tar.gz $binary_name
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}.tar.gz
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'created'
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v2
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            linux-x86_64/linux-x86_64.tar.gz
+            windows-x86_64/windows-x86_64.tar.gz
+            macos-x86_64/macos-x86_64.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
